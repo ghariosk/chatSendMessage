@@ -23,7 +23,7 @@
         "children": [],
         "isRemovable": true,
         "filePath": "chatSendMessage/lambda.js",
-        "code": "let SL_AWS = require('slappforge-sdk-aws');\nlet connectionManager = require('./ConnectionManager');\nconst rds = new SL_AWS.RDS(connectionManager);\nconst AWS = require('aws-sdk');\n\nexports.handler = async function (event, context, callback) {\n\n    // You can pass the existing connection to this function.\n    // A new connection will be created if it's not present as the third param \n    // You must always end/destroy the DB connection after it's used\n    console.log(JSON.stringify(event))\n       const connectionData = await rds.query({\n        instanceIdentifier: 'main',\n        query: 'SELECT customerId from chat;',\n        inserts: [0]\n    }, function (error, results, connection) {\n        if (error) {\n            console.log(\"Error occurred\");\n            throw error;\n        } else {\n            console.log(\"Success\")\n            console.log(results);\n        }\n\n        connection.end();\n    });\n\n    const apigwManagementApi = new AWS.ApiGatewayManagementApi({\n    apiVersion: '2018-11-29',\n    endpoint: event.requestContext.domainName + '/' + event.requestContext.stage\n    });\n\n    const postData = JSON.parse(event.body).data;\n  \n  const postCalls = connectionData.map(async ({ connectionId }) => {\n    try {\n      await apigwManagementApi.postToConnection({ ConnectionId: connectionId, Data: postData }).promise();\n    } catch (e) {\n      if (e.statusCode === 410) {\n        console.log(`Found stale connection, deleting ${connectionId}`);\n        await ddb.delete({ TableName: TABLE_NAME, Key: { connectionId } }).promise();\n      } else {\n        throw e;\n      }\n    }\n  });\n  \n  try {\n    await Promise.all(postCalls);\n  } catch (e) {\n    return { statusCode: 500, body: e.stack };\n  }\n\n  return { statusCode: 200, body: 'Data sent.' };\n \n}",
+        "code": "let SL_AWS = require('slappforge-sdk-aws');\nlet connectionManager = require('./ConnectionManager');\nconst rds = new SL_AWS.RDS(connectionManager);\nconst AWS = require('aws-sdk');\n\nexports.handler = async function (event, context, callback) {\n\n    // You can pass the existing connection to this function.\n    // A new connection will be created if it's not present as the third param \n    // You must always end/destroy the DB connection after it's used\n\n        var connection= await rds.query({\n        instanceIdentifier: 'main',\n        query: 'SELECT connectionId from chat',\n        inserts: [0]\n    }, function (error, results, connection) {\n        if (error) {\n            console.log(\"Error occurred\");\n            throw error;\n        } else {\n            console.log(\"Success\")\n            console.log(results);\n            \n\n            \n        }\n\n        connection.end();\n\n        console.log(results)\n        return results\n    });\n    var connectionData = await connection.json()\n\n    console.log(connectionData)\n    \n\n    \n\n//     const apigwManagementApi = new AWS.ApiGatewayManagementApi({\n//     apiVersion: '2018-11-29',\n//     endpoint: event.requestContext.domainName + '/' + event.requestContext.stage\n//     });\n\n//     const postData = JSON.parse(event.body).data;\n  \n//   const postCalls = connectionData.map(async ({ connectionId }) => {\n//     try {\n//       await apigwManagementApi.postToConnection({ ConnectionId: connectionId, Data: postData }).promise();\n//     } catch (e) {\n//       if (e.statusCode === 410) {\n//         console.log(`Found stale connection, deleting ${connectionId}`);\n//         await ddb.delete({ TableName: TABLE_NAME, Key: { connectionId } }).promise();\n//       } else {\n//         throw e;\n//       }\n//     }\n//   });\n  \n//   try {\n//     await Promise.all(postCalls);\n//   } catch (e) {\n//     return { statusCode: 500, body: e.stack };\n//   }\n\n  return { statusCode: 200, body: 'Data sent.' };\n \n}",
         "config": {
           "runtime": "nodejs8.10",
           "handler": "handler",
@@ -31,7 +31,15 @@
           "memory": 128,
           "layers": []
         },
-        "triggers": []
+        "triggers": [],
+        "testCases": {
+          "87377def-e080-4a5c-9cbf-70d2ba78b4f2": {
+            "id": "87377def-e080-4a5c-9cbf-70d2ba78b4f2",
+            "name": "Unnamed event",
+            "functionId": "41381fc7-3230-483d-bd68-6d7d6b60887f",
+            "event": "{\n    \"requestContext\": {\n        \"routeKey\": \"sendmessage\",\n        \"messageId\": \"e1IipeZ1IAMCKfQ=\",\n        \"eventType\": \"MESSAGE\",\n        \"extendedRequestId\": \"e1IipEx_IAMFyfQ=\",\n        \"requestTime\": \"22/Aug/2019:15:55:09 +0000\",\n        \"messageDirection\": \"IN\",\n        \"stage\": \"Dev\",\n        \"connectedAt\": 1566488872550,\n        \"requestTimeEpoch\": 1566489309738,\n        \"identity\": {\n            \"cognitoIdentityPoolId\": null,\n            \"cognitoIdentityId\": null,\n            \"principalOrgId\": null,\n            \"cognitoAuthenticationType\": null,\n            \"userArn\": null,\n            \"userAgent\": null,\n            \"accountId\": null,\n            \"caller\": null,\n            \"sourceIp\": \"80.77.176.106\",\n            \"accessKey\": null,\n            \"cognitoAuthenticationProvider\": null,\n            \"user\": null\n        },\n        \"requestId\": \"e1IipEx_IAMFyfQ=\",\n        \"domainName\": \"mcgoyg3p6i.execute-api.us-east-1.amazonaws.com\",\n        \"connectionId\": \"e1HeVdRgoAMCKfQ=\",\n        \"apiId\": \"mcgoyg3p6i\"\n    },\n    \"body\": \"{\\\"action\\\":\\\"sendmessage\\\", \\\"data\\\":\\\"hello world\\\"}\",\n    \"isBase64Encoded\": false\n}"
+          }
+        }
       },
       "3b73301c-1f5d-475a-9a66-96add6160c7b": {
         "id": "3b73301c-1f5d-475a-9a66-96add6160c7b",
@@ -57,7 +65,6 @@
         "type": "RDS",
         "config": {
           "editMode": false,
-          "operation": 0,
           "rdsInstance": {
             "rdsEngineType": "mysql",
             "rdsEdition": "mysql",
@@ -69,7 +76,7 @@
             "rdsSetting": {
               "instanceIdentifier": "main",
               "masterUsername": "admin",
-              "masterPassword": "main"
+              "masterPassword": "password"
             },
             "rdsDBOptions": {
               "dbName": "Main",
@@ -79,15 +86,73 @@
             "Host": "main.c2guhaphxbdj.us-east-1.rds.amazonaws.com",
             "doesExist": true
           },
-          "rdsInstanceResources": [],
-          "projectRegion": "us-east-1",
-          "mode": 1,
-          "additionalFiles": [],
+          "isGlobalEditMode": true,
           "params": {
-            "query": "SELECT customerId from chat;",
-            "inserts": "0"
+            "query": "",
+            "inserts": ""
           },
-          "isGlobalEditMode": false,
+          "mode": 1,
+          "projectRegion": "us-east-1",
+          "rdsInstanceResources": [
+            {
+              "name": "rds-main",
+              "type": "RDS",
+              "config": {
+                "editMode": false,
+                "operation": 0,
+                "rdsInstance": {
+                  "rdsEngineType": "mysql",
+                  "rdsEdition": "mysql",
+                  "rdsInstanceSpec": {
+                    "dbInstanceClass": "db.t2.micro",
+                    "dbLicenseModel": "general-public-license",
+                    "dbEngineVersion": "5.7.19"
+                  },
+                  "rdsSetting": {
+                    "instanceIdentifier": "main",
+                    "masterUsername": "admin",
+                    "masterPassword": "password"
+                  },
+                  "rdsDBOptions": {
+                    "dbName": "Main",
+                    "dbPort": 3306
+                  },
+                  "rdsInstanceArn": "arn:aws:rds:us-east-1:509688276117:db:main",
+                  "Host": "main.c2guhaphxbdj.us-east-1.rds.amazonaws.com",
+                  "doesExist": true
+                },
+                "rdsInstanceResources": [],
+                "projectRegion": "us-east-1",
+                "mode": 1,
+                "additionalFiles": [],
+                "params": {
+                  "query": "SELECT customerId from chat;",
+                  "inserts": "0"
+                },
+                "isGlobalEditMode": false,
+                "enableInject": true,
+                "isNewFromGlobal": false
+              },
+              "usage": {
+                "41381fc7-3230-483d-bd68-6d7d6b60887f": {
+                  "operations": {
+                    "query": [
+                      {
+                        "instanceIdentifier": "main",
+                        "query": "SELECT connectionId from chat",
+                        "inserts": [
+                          0
+                        ]
+                      }
+                    ]
+                  },
+                  "occurrence": 1,
+                  "triggers": []
+                }
+              }
+            }
+          ],
+          "additionalFiles": [],
           "enableInject": true,
           "isNewFromGlobal": false
         }
@@ -126,7 +191,7 @@
     "projectRegion": "us-east-1",
     "platform": "AWS",
     "platformRegions": {},
-    "lastSave": 1566489084173
+    "lastSave": 1566490753306
   },
   "VCS_STATE": {
     "provider": "GitHub",
