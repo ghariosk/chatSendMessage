@@ -1,0 +1,8 @@
+{
+  "name": "chatSendMessage",
+  "version": "1.0.0",
+  "dependencies": {
+    "slappforge-sdk-aws": "0.0.5"
+  },
+  "devDependencies": {}
+}

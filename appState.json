@@ -1,0 +1,138 @@
+{
+  "EDITOR_STATE": {
+    "allProjectFiles": {
+      "2f70ebdc-5cc8-4ac4-9523-30187303d9ad": {
+        "id": "2f70ebdc-5cc8-4ac4-9523-30187303d9ad",
+        "parent": null,
+        "name": "chatSendMessage",
+        "type": "DIRECTORY",
+        "isDirectory": true,
+        "children": [
+          "41381fc7-3230-483d-bd68-6d7d6b60887f",
+          "3b73301c-1f5d-475a-9a66-96add6160c7b"
+        ],
+        "isRemovable": false,
+        "filePath": "chatSendMessage"
+      },
+      "41381fc7-3230-483d-bd68-6d7d6b60887f": {
+        "id": "41381fc7-3230-483d-bd68-6d7d6b60887f",
+        "parent": "2f70ebdc-5cc8-4ac4-9523-30187303d9ad",
+        "name": "lambda.js",
+        "type": "JS_LAMBDA",
+        "isDirectory": false,
+        "children": [],
+        "isRemovable": true,
+        "filePath": "chatSendMessage/lambda.js",
+        "code": "let SL_AWS = require('slappforge-sdk-aws');\nlet connectionManager = require('./ConnectionManager');\nconst rds = new SL_AWS.RDS(connectionManager);\nconst AWS = require('aws-sdk');\n\nexports.handler = async function (event, context, callback) {\n\n    // You can pass the existing connection to this function.\n    // A new connection will be created if it's not present as the third param \n    // You must always end/destroy the DB connection after it's used\n    console.log(JSON.stringify(event))\n       const connectionData = await rds.query({\n        instanceIdentifier: 'main',\n        query: 'SELECT customerId from chat;',\n        inserts: [0]\n    }, function (error, results, connection) {\n        if (error) {\n            console.log(\"Error occurred\");\n            throw error;\n        } else {\n            console.log(\"Success\")\n            console.log(results);\n        }\n\n        connection.end();\n    });\n\n    const apigwManagementApi = new AWS.ApiGatewayManagementApi({\n    apiVersion: '2018-11-29',\n    endpoint: event.requestContext.domainName + '/' + event.requestContext.stage\n    });\n\n    const postData = JSON.parse(event.body).data;\n  \n  const postCalls = connectionData.Items.map(async ({ connectionId }) => {\n    try {\n      await apigwManagementApi.postToConnection({ ConnectionId: connectionId, Data: postData }).promise();\n    } catch (e) {\n      if (e.statusCode === 410) {\n        console.log(`Found stale connection, deleting ${connectionId}`);\n        await ddb.delete({ TableName: TABLE_NAME, Key: { connectionId } }).promise();\n      } else {\n        throw e;\n      }\n    }\n  });\n  \n  try {\n    await Promise.all(postCalls);\n  } catch (e) {\n    return { statusCode: 500, body: e.stack };\n  }\n\n  return { statusCode: 200, body: 'Data sent.' };\n \n}",
+        "config": {
+          "runtime": "nodejs8.10",
+          "handler": "handler",
+          "timeout": 60,
+          "memory": 128,
+          "layers": []
+        },
+        "triggers": []
+      },
+      "3b73301c-1f5d-475a-9a66-96add6160c7b": {
+        "id": "3b73301c-1f5d-475a-9a66-96add6160c7b",
+        "parent": "2f70ebdc-5cc8-4ac4-9523-30187303d9ad",
+        "name": "ConnectionManager.js",
+        "type": "JS_FILE",
+        "isDirectory": false,
+        "children": [],
+        "isRemovable": true,
+        "filePath": "chatSendMessage/ConnectionManager.js",
+        "code": "module.exports = function() {\n    this.dbConnections = [];\n\n    this.dbConnections[\"main\"] = {\n        host: \"main.c2guhaphxbdj.us-east-1.rds.amazonaws.com\",\n        port: \"3306\",\n        user: \"admin\",\n        password: process.env.Password_rdsMain,\n        database: \"Main\"\n    };\n};"
+      }
+    },
+    "deletedFiles": [],
+    "rootNode": "2f70ebdc-5cc8-4ac4-9523-30187303d9ad",
+    "openFiles": [
+      "41381fc7-3230-483d-bd68-6d7d6b60887f"
+    ],
+    "currentFileId": "41381fc7-3230-483d-bd68-6d7d6b60887f",
+    "resources": {
+      "rds-main": {
+        "name": "rds-main",
+        "type": "RDS",
+        "config": {
+          "editMode": false,
+          "operation": 0,
+          "rdsInstance": {
+            "rdsEngineType": "mysql",
+            "rdsEdition": "mysql",
+            "rdsInstanceSpec": {
+              "dbInstanceClass": "db.t2.micro",
+              "dbLicenseModel": "general-public-license",
+              "dbEngineVersion": "5.7.19"
+            },
+            "rdsSetting": {
+              "instanceIdentifier": "main",
+              "masterUsername": "admin",
+              "masterPassword": "main"
+            },
+            "rdsDBOptions": {
+              "dbName": "Main",
+              "dbPort": 3306
+            },
+            "rdsInstanceArn": "arn:aws:rds:us-east-1:509688276117:db:main",
+            "Host": "main.c2guhaphxbdj.us-east-1.rds.amazonaws.com",
+            "doesExist": true
+          },
+          "rdsInstanceResources": [],
+          "projectRegion": "us-east-1",
+          "mode": 1,
+          "additionalFiles": [],
+          "params": {
+            "query": "SELECT customerId from chat;",
+            "inserts": "0"
+          },
+          "isGlobalEditMode": false,
+          "enableInject": true,
+          "isNewFromGlobal": false
+        }
+      }
+    },
+    "customTemplate": {
+      "dialect": null,
+      "definitions": {}
+    },
+    "envVariables": [
+      {
+        "lambdaId": "all",
+        "varKey": "SIGMA_AWS_ACC_ID",
+        "varValue": null,
+        "shouldPersist": false,
+        "displayOnly": false,
+        "editable": false
+      }
+    ],
+    "packageJSON": {
+      "dependencies": {
+        "slappforge-sdk-aws": {
+          "name": "slappforge-sdk-aws",
+          "language": "javascript",
+          "version": "0.0.5",
+          "dev": false,
+          "notRemovable": false
+        }
+      }
+    }
+  },
+  "PROJECT_META": {
+    "projectName": "chatSendMessage",
+    "projectDescription": "",
+    "projectVersion": "1.0.0",
+    "projectRegion": "us-east-1",
+    "platform": "AWS",
+    "platformRegions": {},
+    "lastSave": 1566488261335
+  },
+  "VCS_STATE": {
+    "provider": "GitHub",
+    "repo": {
+      "name": "chatSendMessage",
+      "url": "https://github.com/ghariosk/chatSendMessage"
+    }
+  }
+}
