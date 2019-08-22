@@ -32,7 +32,7 @@ exports.handler = async function (event, context, callback) {
 
     const postData = JSON.parse(event.body).data;
   
-  const postCalls = connectionData.Items.map(async ({ connectionId }) => {
+  const postCalls = connectionData.map(async ({ connectionId }) => {
     try {
       await apigwManagementApi.postToConnection({ ConnectionId: connectionId, Data: postData }).promise();
     } catch (e) {
